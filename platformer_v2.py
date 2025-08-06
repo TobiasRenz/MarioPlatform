@@ -182,7 +182,7 @@ class Player:
         self.vel_x = 0
         self.vel_y = 0
         self.speed = 5
-        self.jump_power = -12
+        self.jump_power = -15
         self.gravity = 0.8
         self.on_ground = False
         self.rect = pygame.Rect(x, y, self.width, self.height)
