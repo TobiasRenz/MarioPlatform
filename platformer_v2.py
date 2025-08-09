@@ -190,13 +190,24 @@ class Player:
         self.jump_key_pressed = False
         self.respawn_timer = 0
         self.is_dead = False
+        self.flash_timer = 0
+        self.flash_red = False
     
     def update(self, platforms):
-        # Handle respawn timer
+        # Handle respawn timer and flashing
         if self.is_dead:
             self.respawn_timer -= 1
+            if self.flash_timer > 0:
+                self.flash_timer -= 1
+                # Flash every 4 frames for strobing effect
+                self.flash_red = (self.flash_timer // 4) % 2 == 0
+            else:
+                self.flash_red = False
+            
             if self.respawn_timer <= 0:
                 self.is_dead = False
+                self.flash_red = False
+                self.flash_timer = 0
                 self.x = 100
                 self.y = 100
                 self.vel_x = 0
@@ -245,26 +256,40 @@ class Player:
         self.rect.y = self.y
     
     def die(self):
-        """Trigger death with 1 second respawn delay"""
-        self.is_dead = True
-        self.respawn_timer = 60  # 60 frames = 1 second at 60 FPS
+        """Trigger death with flashing red effect and respawn delay"""
+        if not self.is_dead:  # Only trigger if not already dead
+            self.is_dead = True
+            self.respawn_timer = 60  # 60 frames = 1 second at 60 FPS
+            self.flash_timer = 30  # Flash for 0.5 seconds before disappearing
+            self.flash_red = True
     
     def check_collisions(self, platforms):
         self.on_ground = False
         
         for platform in platforms:
             if self.rect.colliderect(platform):
-                if self.vel_y > 0 and self.y < platform.top:
+                if self.vel_y > 0 and self.rect.bottom > platform.top and self.y < platform.top:
                     self.y = platform.top - self.height
                     self.vel_y = 0
                     self.on_ground = True
-                elif self.vel_y < 0:
-                    self.y = platform.bottom
-                    self.vel_y = 0
     
     def draw(self, screen):
         pixel_size = 2
         y_offset = 4
+        
+        # Color selection based on flash state
+        if self.flash_red:
+            hat_color = (200, 0, 0)      # Darker red for flashing
+            face_color = (255, 100, 100) # Light red for flashing
+            shirt_color = (200, 0, 0)    # Darker red for flashing
+            pants_color = (150, 0, 0)    # Dark red for flashing
+            shoe_color = (100, 0, 0)     # Very dark red for flashing
+        else:
+            hat_color = RED
+            face_color = PINK
+            shirt_color = RED
+            pants_color = BLUE
+            shoe_color = BLACK
         
         hat_pixels = [
             (4, 0), (5, 0), (6, 0), (7, 0), (8, 0), (9, 0), (10, 0),
@@ -310,19 +335,19 @@ class Player:
         ]
         
         for px, py in hat_pixels:
-            pygame.draw.rect(screen, RED, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
+            pygame.draw.rect(screen, hat_color, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
         
         for px, py in face_pixels:
-            pygame.draw.rect(screen, PINK, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
+            pygame.draw.rect(screen, face_color, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
         
         for px, py in shirt_pixels:
-            pygame.draw.rect(screen, RED, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
+            pygame.draw.rect(screen, shirt_color, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
         
         for px, py in pants_pixels:
-            pygame.draw.rect(screen, BLUE, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
+            pygame.draw.rect(screen, pants_color, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
         
         for px, py in shoe_pixels:
-            pygame.draw.rect(screen, BLACK, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
+            pygame.draw.rect(screen, shoe_color, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
         
         for px, py in eye_pixels:
             pygame.draw.rect(screen, BLACK, (self.x + px * pixel_size, self.y + (py + y_offset) * pixel_size, pixel_size, pixel_size))
@@ -667,7 +692,7 @@ def main():
         for enemy in enemies:
             enemy.draw(screen)
         
-        if not game_won and not player.is_dead:
+        if not game_won and (not player.is_dead or player.flash_timer > 0):
             player.draw(screen)
         
         score_text = font.render(f"Score: {score}", True, BLACK)
